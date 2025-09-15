@@ -106,7 +106,6 @@ pub fn merge_imports(arena_state: *Arena, input: str8, writer: *std.Io.Writer) !
                         .descendants = .empty,
                     };
                 }
-                std.debug.print("Module {s} imported. Parent = {?s}\n", .{ mod, parent_mod });
                 try parent_modules.append(arena, .{ .mod = mod, .reason = .colon_or_none });
             },
         }
