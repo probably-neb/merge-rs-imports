@@ -104,9 +104,10 @@ pub fn merge_imports(arena_state: *Arena, input: str8, writer: *std.Io.Writer) !
             },
             .mod => |mod| {
                 const parent = parent_modules.getLastOrNull();
-                const full_path = if (parent) |p| blk: {
-                    break :blk try std.mem.concat(arena, u8, &.{ p.full_path, "::", mod });
-                } else mod;
+                const full_path = if (parent) |p|
+                    try std.mem.concat(arena, u8, &.{ p.full_path, "::", mod })
+                else
+                    mod;
 
                 const parent_full_path: ?str8 = if (parent) |p| blk: {
                     try imported_modules.getPtr(p.full_path).?.descendants.put(arena, full_path, {});
@@ -285,6 +286,17 @@ const BoundedWriter = struct {
     }
 };
 
+fn expect_merged_imports(input: []const u8, expected: []const u8) !void {
+    var buffer: [IMPORTS_LENGTH_MAX]u8 = undefined;
+    var output = BoundedWriter.init(&buffer);
+
+    var arena = Arena.init(std.testing.allocator);
+    defer arena.deinit();
+    try merge_imports(&arena, input, &output.writer);
+
+    try std.testing.expectEqualStrings(expected, output.written());
+}
+
 test "ui example with nesting" {
     const input =
         \\ use ui::{
@@ -315,9 +327,8 @@ test "ui example with nesting" {
     );
 }
 
-// FIXME: INFINITE LOOP
 test "json example complicated" {
-    const input =
+    try expect_merged_imports(
         \\ use anyhow::{Context as _, Result, bail};
         \\ use async_compression::futures::bufread::GzipDecoder;
         \\ use async_tar::Archive;
@@ -349,16 +360,7 @@ test "json example complicated" {
         \\ use task::{AdapterSchemas, TaskTemplate, TaskTemplates, VariableName};
         \\ use theme::ThemeRegistry;
         \\ use util::{ResultExt, archive::extract_zip, fs::remove_matching, maybe, merge_json_value_into};
-    ;
-
-    var buffer: [8192]u8 = undefined;
-    var output = BoundedWriter.init(&buffer);
-
-    var arena = Arena.init(std.testing.allocator);
-    defer arena.deinit();
-    try merge_imports(&arena, input, &output.writer);
-
-    try std.testing.expectEqualStrings(
+    ,
         \\use anyhow::{Context as _, Result, bail, };
         \\use async_compression::futures::bufread::GzipDecoder;
         \\use async_tar::Archive;
@@ -378,13 +380,11 @@ test "json example complicated" {
         \\use theme::ThemeRegistry;
         \\use util::{ResultExt, archive::extract_zip, fs::remove_matching, maybe, merge_json_value_into, };
         \\
-    ,
-        output.written(),
     );
 }
 
 test "horrible output #5" {
-    const input =
+    try expect_merged_imports(
         \\use crate::sign_in::initiate_sign_out;
         \\use ::fs::Fs;
         \\use anyhow::{Context as _, Result, anyhow};
@@ -425,16 +425,7 @@ test "horrible output #5" {
         \\use util::rel_path::RelPath;
         \\use util::{ResultExt, fs::remove_matching};
         \\use workspace::Workspace;
-    ;
-
-    var buffer: [8192]u8 = undefined;
-    var output = BoundedWriter.init(&buffer);
-
-    var arena = Arena.init(std.testing.allocator);
-    defer arena.deinit();
-    try merge_imports(&arena, input, &output.writer);
-
-    try std.testing.expectEqualStrings(
+    ,
         \\use anyhow::{Context as _, Result, anyhow, };
         \\use collections::{HashMap, HashSet, };
         \\use command_palette_hooks::CommandPaletteFilter;
@@ -457,7 +448,5 @@ test "horrible output #5" {
         \\use util::{ResultExt, fs::remove_matching, rel_path::RelPath, };
         \\use workspace::Workspace;
         \\
-    ,
-        output.written(),
     );
 }
