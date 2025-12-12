@@ -50,7 +50,14 @@ pub fn merge_imports(arena_state: *Arena, input: str8, writer: *std.Io.Writer) !
                         while (j < input.len and std.ascii.isWhitespace(input[j])) : (j += 1) {}
                         while (j < input.len and std.ascii.isAlphanumeric(input[j]) or input[j] == '_') : (j += 1) {}
                     }
-                    try tokens.append(arena, .{ .mod = input[i..j] });
+                    const last_token = tokens.getLastOrNull();
+                    const has_leading_colons = last_token != null and last_token.? == .use and
+                        i >= 2 and input[i - 1] == ':' and input[i - 2] == ':';
+                    const mod_name = if (has_leading_colons)
+                        input[i - 2 .. j]
+                    else
+                        input[i..j];
+                    try tokens.append(arena, .{ .mod = mod_name });
                     i = j - 1;
                 }
             },
@@ -122,9 +129,16 @@ pub fn merge_imports(arena_state: *Arena, input: str8, writer: *std.Io.Writer) !
     imported_modules.sort(struct {
         modules: *const ModuleMap,
         pub fn lessThan(ctx: @This(), a: usize, b: usize) bool {
-            const mod_a = ctx.modules.keys()[a];
-            const mod_b = ctx.modules.keys()[b];
+            const mod_a = strip_leading_colons(ctx.modules.keys()[a]);
+            const mod_b = strip_leading_colons(ctx.modules.keys()[b]);
             return std.mem.lessThan(u8, mod_a, mod_b);
+        }
+
+        fn strip_leading_colons(s: str8) str8 {
+            if (s.len >= 2 and s[0] == ':' and s[1] == ':') {
+                return s[2..];
+            }
+            return s;
         }
     }{ .modules = &imported_modules });
 
@@ -425,7 +439,7 @@ test "horrible output #5" {
         \\use collections::{HashMap, HashSet, };
         \\use command_palette_hooks::CommandPaletteFilter;
         \\use crate::sign_in::initiate_sign_out;
-        \\use fs::Fs;
+        \\use ::fs::Fs;
         \\use futures::{Future, FutureExt, TryFutureExt, channel::oneshot, future::Shared, };
         \\use gpui::{App, AppContext as _, AsyncApp, Context, Entity, EntityId, EventEmitter, Global, Task, WeakEntity, actions, };
         \\use http_client::HttpClient;
