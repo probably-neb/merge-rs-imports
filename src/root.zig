@@ -2,9 +2,11 @@
 const std = @import("std");
 const Arena = std.heap.ArenaAllocator;
 
+const IMPORTS_LENGTH_MAX: u32 = 1024 * 4; // 4KB
 const str8 = []const u8;
 
 pub fn merge_imports(arena_state: *Arena, input: str8, writer: *std.Io.Writer) !void {
+    if (input.len > IMPORTS_LENGTH_MAX) return error.InputTooLong;
     const arena = arena_state.allocator();
     const Token = union(enum) {
         use,
@@ -222,6 +224,167 @@ test "ui example with nesting" {
     try std.testing.expectEqualStrings(
         \\use ui::{ContextMenu, DropdownMenu, NumericStepper, SwitchField, TableInteractionState, ToggleButtonGroup, ToggleButtonSimple, foo::{bar, baz, }, prelude::*, };
         \\
+    ,
+        output.written(),
+    );
+}
+
+// FIXME: INFINITE LOOP
+test "json example complicated" {
+    const input =
+        \\ use anyhow::{Context as _, Result, bail};
+        \\ use async_compression::futures::bufread::GzipDecoder;
+        \\ use async_tar::Archive;
+        \\ use async_trait::async_trait;
+        \\ use collections::HashMap;
+        \\ use futures::StreamExt;
+        \\ use gpui::{App, AsyncApp, SharedString, Task};
+        \\ use http_client::github::{GitHubLspBinaryVersion, latest_github_release};
+        \\ use language::{
+        \\     ContextProvider, LanguageName, LocalFile as _, LspAdapter, LspAdapterDelegate, LspInstaller,
+        \\     Toolchain,
+        \\ };
+        \\ use lsp::{LanguageServerBinary, LanguageServerName};
+        \\ use node_runtime::{NodeRuntime, VersionStrategy};
+        \\ use project::lsp_store::language_server_settings;
+        \\ use serde_json::{Value, json};
+        \\ use smol::{
+        \\     fs::{self},
+        \\     io::BufReader,
+        \\ };
+        \\ use std::{
+        \\     env::consts,
+        \\     ffi::OsString,
+        \\     path::{Path, PathBuf},
+        \\     str::FromStr,
+        \\     sync::Arc,
+        \\ };
+        \\ use task::{TaskTemplate, TaskTemplates, VariableName};
+        \\ use task::{AdapterSchemas, TaskTemplate, TaskTemplates, VariableName};
+        \\ use theme::ThemeRegistry;
+        \\ use util::{ResultExt, archive::extract_zip, fs::remove_matching, maybe, merge_json_value_into};
+    ;
+
+    var output = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer output.deinit();
+
+    var arena = Arena.init(std.testing.allocator);
+    defer arena.deinit();
+    try merge_imports(&arena, input, &output.writer);
+
+    try std.testing.expectEqualStrings(
+        \\ use anyhow::{Context as _, Result, bail};
+        \\ use async_compression::futures::bufread::GzipDecoder;
+        \\ use async_tar::Archive;
+        \\ use async_trait::async_trait;
+        \\ use collections::HashMap;
+        \\ use futures::StreamExt;
+        \\ use gpui::{App, AsyncApp, SharedString, Task};
+        \\ use http_client::github::{GitHubLspBinaryVersion, latest_github_release};
+        \\ use language::{
+        \\     ContextProvider, LanguageName, LocalFile as _, LspAdapter, LspAdapterDelegate, LspInstaller,
+        \\     Toolchain,
+        \\ };
+        \\ use lsp::{LanguageServerBinary, LanguageServerName};
+        \\ use node_runtime::{NodeRuntime, VersionStrategy};
+        \\ use project::lsp_store::language_server_settings;
+        \\ use serde_json::{Value, json};
+        \\ use smol::{
+        \\     fs::{self},
+        \\     io::BufReader,
+        \\ };
+        \\ use std::{
+        \\     env::consts,
+        \\     ffi::OsString,
+        \\     path::{Path, PathBuf},
+        \\     str::FromStr,
+        \\     sync::Arc,
+        \\ };
+        \\ use task::{AdapterSchemas, TaskTemplate, TaskTemplates, VariableName};
+        \\ use theme::ThemeRegistry;
+        \\ use util::{ResultExt, archive::extract_zip, fs::remove_matching, maybe, merge_json_value_into};
+    ,
+        output.written(),
+    );
+}
+
+test "horrible output #5" {
+    if (true) {
+        return error.SkipZigTest;
+    }
+    const input =
+        \\use crate::sign_in::initiate_sign_out;
+        \\use ::fs::Fs;
+        \\use anyhow::{Context as _, Result, anyhow};
+        \\use collections::{HashMap, HashSet};
+        \\use command_palette_hooks::CommandPaletteFilter;
+        \\use futures::{Future, FutureExt, TryFutureExt, channel::oneshot, future::Shared};
+        \\use gpui::{
+        \\App, AppContext as _, AsyncApp, Context, Entity, EntityId, EventEmitter, Global, Task,
+        \\WeakEntity, actions,
+        \\};
+        \\use http_client::HttpClient;
+        \\use language::language_settings::CopilotSettings;
+        \\use language::{
+        \\Anchor, Bias, Buffer, BufferSnapshot, Language, PointUtf16, ToPointUtf16,
+        \\language_settings::{EditPredictionProvider, all_language_settings, language_settings},
+        \\point_from_lsp, point_to_lsp,
+        \\};
+        \\use lsp::{LanguageServer, LanguageServerBinary, LanguageServerId, LanguageServerName};
+        \\use node_runtime::{NodeRuntime, VersionStrategy};
+        \\use parking_lot::Mutex;
+        \\use project::DisableAiSettings;
+        \\use request::StatusNotification;
+        \\use semver::Version;
+        \\use serde_json::json;
+        \\use settings::Settings;
+        \\use settings::SettingsStore;
+        \\use std::collections::hash_map::Entry;
+        \\use std::{
+        \\any::TypeId,
+        \\env,
+        \\ffi::OsString,
+        \\mem,
+        \\ops::Range,
+        \\path::{Path, PathBuf},
+        \\sync::Arc,
+        \\};
+        \\use sum_tree::Dimensions;
+        \\use util::rel_path::RelPath;
+        \\use util::{ResultExt, fs::remove_matching};
+        \\use workspace::Workspace;
+    ;
+
+    var output = std.Io.Writer.Allocating.init(std.testing.allocator);
+    defer output.deinit();
+
+    var arena = Arena.init(std.testing.allocator);
+    defer arena.deinit();
+    try merge_imports(&arena, input, &output.writer);
+
+    try std.testing.expectEqualStrings(
+        \\use crate::sign_in::initiate_sign_out;
+        \\use ::fs::Fs;
+        \\use anyhow::{Context as _, Result, anyhow};
+        \\use collections::{HashMap, HashSet};
+        \\use command_palette_hooks::CommandPaletteFilter;
+        \\use futures::{Future, FutureExt, TryFutureExt, channel::oneshot, future::Shared};
+        \\use gpui::{ App, AppContext as _, AsyncApp, Context, Entity, EntityId, EventEmitter, Global, Task, WeakEntity, actions, };
+        \\use http_client::HttpClient;
+        \\use language::language_settings::CopilotSettings;
+        \\use language::{ Anchor, Bias, Buffer, BufferSnapshot, Language, PointUtf16, ToPointUtf16, language_settings::{EditPredictionProvider, all_language_settings, language_settings}, point_from_lsp, point_to_lsp, };
+        \\use lsp::{LanguageServer, LanguageServerBinary, LanguageServerId, LanguageServerName, };
+        \\use node_runtime::{NodeRuntime, VersionStrategy, };
+        \\use parking_lot::Mutex;
+        \\use project::DisableAiSettings;
+        \\use request::StatusNotification;
+        \\use semver::Version;
+        \\use serde_json::json;
+        \\use settings::{Settings, SettingsStore, };
+        \\use std::{any::TypeId, collections::hash_map::Entry, env, ffi::OsString, mem, ops::Range, path::{Path, PathBuf, }, sync::Arc, };
+        \\use sum_tree::Dimensions;
+        \\use util::{ResultExt, fs::remove_matching, rel_path::RelPath, };
+        \\use workspace::Workspace;
     ,
         output.written(),
     );
