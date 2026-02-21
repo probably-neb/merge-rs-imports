@@ -5,6 +5,17 @@ const Arena = std.heap.ArenaAllocator;
 const IMPORTS_LENGTH_MAX: u32 = 1024 * 4; // 4KB
 const str8 = []const u8;
 
+const MERGE_MARKER_PREFIXES: []const []const u8 = &.{
+    // GIT
+    ">>>>>>>",
+    "<<<<<<<",
+    "=======",
+    // JUJUTSU
+    "%%%%%%%",
+    "\\\\\\\\\\",
+    "+++++++",
+};
+
 pub fn merge_imports(arena_state: *Arena, input: str8, writer: *std.Io.Writer) !void {
     if (input.len > IMPORTS_LENGTH_MAX) return error.InputTooLong;
     const arena = arena_state.allocator();
@@ -35,8 +46,21 @@ pub fn merge_imports(arena_state: *Arena, input: str8, writer: *std.Io.Writer) !
             },
             ':' => continue,
             else => {
+                if (c == '\n') {
+                    const next_newline = std.mem.indexOfScalar(u8, input[i + 1 ..], '\n') orelse input.len - i - 1;
+                    const next_line = std.mem.trim(u8, input[i + 1 .. i + 1 + next_newline], &std.ascii.whitespace);
+                    const is_conflict_marker_line = blk: for (MERGE_MARKER_PREFIXES) |prefix| {
+                        if (std.mem.startsWith(u8, next_line, prefix)) {
+                            break :blk true;
+                        }
+                    } else false;
+                    if (is_conflict_marker_line) {
+                        i += @as(u32, @intCast(next_newline));
+                        continue;
+                    }
+                }
                 if (std.ascii.isWhitespace(c)) continue;
-                if (c == 'u' and i < input.len -| 3 and input[i + 1] == 's' and input[i + 2] == 'e') {
+                if (c == 'u' and i < input.len -| 4 and input[i + 1] == 's' and input[i + 2] == 'e' and std.ascii.isWhitespace(input[i + 3])) {
                     try tokens.append(arena, .use);
                     i += 3;
                     continue;
@@ -395,14 +419,18 @@ test "horrible output #5" {
         \\App, AppContext as _, AsyncApp, Context, Entity, EntityId, EventEmitter, Global, Task,
         \\WeakEntity, actions,
         \\};
-        \\use http_client::HttpClient;
-        \\use language::language_settings::CopilotSettings;
-        \\use language::{
-        \\Anchor, Bias, Buffer, BufferSnapshot, Language, PointUtf16, ToPointUtf16,
-        \\language_settings::{EditPredictionProvider, all_language_settings, language_settings},
-        \\point_from_lsp, point_to_lsp,
+        \\<<<<<<< [GIT CONFLICT] HEAD
+        \\ use http_client::HttpClient;
+        \\+use language::language_settings::CopilotSettings;
+        \\-use language::{
+        \\=======
+        \\ Anchor, Bias, Buffer, BufferSnapshot, Language, PointUtf16, ToPointUtf16,
+        \\ language_settings::{EditPredictionProvider, all_language_settings, language_settings},
+        \\-point_to_lsp,
+        \\+point_from_lsp, point_to_lsp,
         \\};
         \\use lsp::{LanguageServer, LanguageServerBinary, LanguageServerId, LanguageServerName};
+        \\>>>>>>>
         \\use node_runtime::{NodeRuntime, VersionStrategy};
         \\use parking_lot::Mutex;
         \\use project::DisableAiSettings;
@@ -412,11 +440,17 @@ test "horrible output #5" {
         \\use settings::Settings;
         \\use settings::SettingsStore;
         \\use std::collections::hash_map::Entry;
+        \\
+        \\<<<<<<< [JJ CONFLICT] conflict 1 of 1
+        \\%%%%%%% diff from: vpxusssl 38d49363 "merge base"
+        \\\\\\\\\        to: rtsqusxu 2768b0b9 "commit A"
         \\use std::{
         \\any::TypeId,
         \\env,
+        \\+++++++ ysrnknol 7a20f389 "commit B"
         \\ffi::OsString,
         \\mem,
+        \\>>>>>>> conflict 1 of 1 ends
         \\ops::Range,
         \\path::{Path, PathBuf},
         \\sync::Arc,

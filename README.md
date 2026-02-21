@@ -12,7 +12,13 @@ The binary will be available at `zig-out/bin/merge-imports`.
 
 ## Usage
 
-`merge-imports` reads Rust import statements from stdin, merges them, and outputs the result to stdout. It's designed for use with the `!` filter command in Vim-compatible editors (Vim, Neovim, Zed, Helix, etc.).
+`merge-imports` reads Rust import statements from stdin, merges them, and outputs the result to stdout.
+It's designed for use with the `!` filter command in Vim-compatible editors (Vim, Neovim, Zed, Helix, etc.).
+
+It will strip `git` and `jujutsu` style merge markers.
+It will not remove unused imports.
+It will not format the output nicely.
+
 
 ### Example: Resolving a Git Merge Conflict
 
@@ -29,22 +35,12 @@ use std::sync::{Arc, Mutex};
 >>>>>>> feature-branch
 ```
 
-1. Remove the conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`), leaving just the imports:
+1. Select the import block and run `:!merge-imports`
 
-```rust
-use std::collections::{HashMap, HashSet};
-use std::io::{Read, Write};
-use std::sync::Arc;
-use std::io::{BufRead, Read};
-use std::sync::{Arc, Mutex};
-```
-
-2. Select the import block and run `:!merge-imports`
-
-3. The imports are merged:
+2. The imports are merged:
 
 ```rust
 use std::{collections::{HashMap, HashSet, }, io::{BufRead, Read, Write, }, sync::{Arc, Mutex, }, };
 ```
 
-4. Run your formatter to clean up the output
+3. Run your formatter to clean up the output
