@@ -484,3 +484,57 @@ test "horrible output #5" {
         \\
     );
 }
+
+test "bad #6" {
+    try expect_merged_imports(
+        \\pub use crate::config::*;
+        \\use crate::features::completions::handle_completions;
+        \\use crate::features::count_tokens::handle_count_tokens;
+        \\use crate::features::list_models::handle_list_models;
+        \\use crate::features::predict_edits::{
+        \\    handle_accept_edit_prediction, handle_edit_prediction_experiments, handle_predict_edits,
+        \\    handle_predict_edits_raw, handle_predict_edits_v3, handle_reject_edit_prediction,
+        \\};
+        \\use crate::features::web_search::handle_web_search;
+        \\<<<<<<< Conflict 2 of 2
+        \\+++++++ Contents of side #1
+        \\pub use crate::organization_member_usage::{
+        \\    OrganizationMemberUsage, OrganizationMemberUsageClient,
+        \\};
+        \\%%%%%%% Changes from base to side #2
+        \\+pub use crate::prediction_experiments_store::*;
+        \\>>>>>>> Conflict 2 of 2 ends
+        \\use crate::services::UsageService;
+        \\pub use crate::user_subscription::UserSubscription;
+        ,
+    );
+}
+
+test "bad #7" {
+    try expect_merged_imports(
+        \\pub use settings::{
+        \\<<<<<<< Conflict 1 of 1
+        \\+++++++ Contents of side #1
+        \\    AutoIndentMode, CompletionSettingsContent, EditPredictionDataCollectionChoice,
+        \\    EditPredictionPromptFormat, EditPredictionProvider, EditPredictionsMode, FormatOnSave,
+        \\    Formatter, FormatterList, InlayHintKind, LanguageSettingsContent, LspInsertMode,
+        \\    RewrapBehavior, ShowWhitespaceSetting, SoftWrap, WordsCompletionMode,
+        \\%%%%%%% Changes from base to side #2
+        \\     AutoIndentMode, CompletionSettingsContent, EditPredictionPromptFormat, EditPredictionProvider,
+        \\     EditPredictionsMode, FormatOnSave, Formatter, FormatterList, InlayHintKind,
+        \\-    LanguageSettingsContent, LspInsertMode, RewrapBehavior, ShowWhitespaceSetting, SoftWrap,
+        \\-    WordsCompletionMode,
+        \\+    LanguageSettingsContent, LineEndingSetting, LspInsertMode, RewrapBehavior,
+        \\+    ShowWhitespaceSetting, SoftWrap, WordsCompletionMode,
+        \\>>>>>>> Conflict 1 of 1 ends
+        \\};
+    ,
+
+        \\use pub ::settings::{Changes ::from ::base ::to ::side ::2
+        \\::AutoIndentMode, CompletionSettingsContent, Conflict ::1 ::of ::{1
+        \\::Contents ::of ::side ::1
+        \\::AutoIndentMode, 1 ::ends
+        \\, }, EditPredictionDataCollectionChoice, EditPredictionPromptFormat, EditPredictionProvider, EditPredictionsMode, FormatOnSave, Formatter, FormatterList, InlayHintKind, LanguageSettingsContent, LineEndingSetting, LspInsertMode, RewrapBehavior, ShowWhitespaceSetting, SoftWrap, WordsCompletionMode, };
+        ,
+    );
+}
