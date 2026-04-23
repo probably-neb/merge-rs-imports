@@ -43,4 +43,4 @@ use std::sync::{Arc, Mutex};
 use std::{collections::{HashMap, HashSet, }, io::{BufRead, Read, Write, }, sync::{Arc, Mutex, }, };
 ```
 
-3. Run your formatter to clean up the output
+3. Run your formatter to clean up the output, and use the code action from `rust-analyzer` to remove all unnecessary imports as needed
